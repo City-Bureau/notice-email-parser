@@ -1,0 +1,9 @@
+{
+  "name": "store-inbound-emails",
+  "description": "",
+  "license": "MIT",
+  "version": "0.1.0",
+  "dependencies": {
+    "serverless-dotenv-plugin": "^2.1.1"
+  }
+}

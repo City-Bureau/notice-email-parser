@@ -1,0 +1,68 @@
+service: store-inbound-emails
+
+provider:
+  name: aws
+  runtime: python3.7
+  stage: prod
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - s3:*
+      Resource: "arn:aws:s3:::${env:S3_BUCKET}/*"
+  environment:
+    S3_BUCKET: ${env:S3_BUCKET}
+
+functions:
+  store_inbound_emails:
+    handler: store_inbound_emails.handler
+    events:
+      - s3:
+          bucket: ${env:S3_BUCKET}
+          event: s3:ObjectCreated:*
+
+resources:
+  Resources:
+    EmailBucketPermission:
+      Type: AWS::S3::BucketPolicy
+      DependsOn: ${env:BUCKET_REF}
+      Properties:
+        Bucket:
+          Ref: ${env:BUCKET_REF}
+        PolicyDocument:
+          Statement:
+            - Principal: "*"
+              Action: 
+                - s3:GetObject
+              Effect: Allow
+              Sid: AllowPublicRead
+              Resource:
+                Fn::Join: ['', ['arn:aws:s3:::', Ref: "${env:BUCKET_REF}", '/*'] ]
+            - Principal:
+                Service: "ses.amazonaws.com"
+              Action:
+                - s3:PutObject
+              Effect: Allow
+              Sid: "AllowSESPuts"
+              Resource:
+                Fn::Join: ['', ['arn:aws:s3:::', Ref: "${env:BUCKET_REF}", '/*'] ]
+              Condition:
+                StringEquals:
+                  "aws:Referer": { Ref: AWS::AccountId }
+    EmailReceiptRule:
+      Type: AWS::SES::ReceiptRule
+      DependsOn:
+        - EmailBucketPermission
+      Properties:
+        RuleSetName: ${env:RULE_SET_NAME}
+        Rule:
+          Name: ${self:service}-s3
+          Enabled: true
+          Recipients:
+            - ${env:RECIPIENT_EMAIL}
+          Actions:
+            - S3Action:
+                BucketName: ${env:S3_BUCKET}
+                ObjectKeyPrefix: ${env:BUCKET_PREFIX}
+
+plugins:
+  - serverless-dotenv-plugin
