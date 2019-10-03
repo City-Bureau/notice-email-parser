@@ -8,7 +8,7 @@ import boto3
 
 S3_BUCKET = os.getenv("S3_BUCKET")
 
-MATCHERS = {"cook_hospitals": {"from": r"cookcountyhhs.org", "subject": r"CCH Board"}}
+MATCHERS = {"akr_airport_authority": {"from": r"akroncantonairport.com"}}
 
 
 def get_match(msg):
