@@ -12,9 +12,24 @@ provider:
   environment:
     S3_BUCKET: ${env:S3_BUCKET}
 
+custom:
+  alerts:
+    stages:
+      - prod
+    alarms:
+      - functionErrors
+    topics:
+      alarm:
+        topic: ${self:service}-prod-alerts-alarm
+        notifications:
+          - protocol: email
+            endpoint: ${ssm:glueNotificationEmail}
+
 functions:
   store_inbound_emails:
     handler: store_inbound_emails.handler
+    alarms:
+      - functionErrors
     events:
       - s3:
           bucket: ${env:S3_BUCKET}
@@ -66,3 +81,4 @@ resources:
 
 plugins:
   - serverless-dotenv-plugin
+  - serverless-plugin-aws-alerts
