@@ -1,4 +1,4 @@
-service: store-inbound-emails
+service: notice-email-parser
 
 provider:
   name: aws
@@ -26,23 +26,22 @@ custom:
             endpoint: ${ssm:glueNotificationEmail}
 
 functions:
-  store_inbound_emails:
-    handler: store_inbound_emails.handler
+  parse_notice_email:
+    handler: handler.handler
     alarms:
       - functionErrors
     events:
       - s3:
           bucket: ${env:S3_BUCKET}
           event: s3:ObjectCreated:*
+          existing: true
 
 resources:
   Resources:
     EmailBucketPermission:
       Type: AWS::S3::BucketPolicy
-      DependsOn: ${env:BUCKET_REF}
       Properties:
-        Bucket:
-          Ref: ${env:BUCKET_REF}
+        Bucket: ${env:S3_BUCKET}
         PolicyDocument:
           Statement:
             - Principal: "*"
@@ -50,16 +49,14 @@ resources:
                 - s3:GetObject
               Effect: Allow
               Sid: AllowPublicRead
-              Resource:
-                Fn::Join: ['', ['arn:aws:s3:::', Ref: "${env:BUCKET_REF}", '/*'] ]
+              Resource: "arn:aws:s3:::${env:S3_BUCKET}/*"
             - Principal:
                 Service: "ses.amazonaws.com"
               Action:
                 - s3:PutObject
               Effect: Allow
               Sid: "AllowSESPuts"
-              Resource:
-                Fn::Join: ['', ['arn:aws:s3:::', Ref: "${env:BUCKET_REF}", '/*'] ]
+              Resource: "arn:aws:s3:::${env:S3_BUCKET}/*"
               Condition:
                 StringEquals:
                   "aws:Referer": { Ref: AWS::AccountId }

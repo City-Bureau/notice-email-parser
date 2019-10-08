@@ -1,6 +1,6 @@
-# Serverless Inbound Email Storage
+# Notice Email Parser
 
-Store inbound SES emails in S3 organized by matched criteria
+Store inbound SES public notice emails in S3 organized by matched criteria
 
 ## Setup
 

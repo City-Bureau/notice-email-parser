@@ -60,7 +60,8 @@ def handler(event, context):
 
     match_slug = get_match(msg)
     if not match_slug:
-        return
+        sender = msg.get("reply-to", "") or msg.get("from", "")
+        raise ValueError(f"Email {msg['subject']} from {sender} did not match")
 
     s3.copy_object(
         CopySource=obj_source,

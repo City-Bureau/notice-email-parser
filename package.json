@@ -1,5 +1,5 @@
 {
-  "name": "store-inbound-emails",
+  "name": "notice-email-parser",
   "description": "",
   "license": "MIT",
   "version": "0.1.0",
