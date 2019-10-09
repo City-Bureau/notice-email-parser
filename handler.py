@@ -1,5 +1,6 @@
 import os
 from datetime import datetime
+from email.message import EmailMessage
 from email.parser import Parser
 from email.policy import default
 
@@ -8,23 +9,31 @@ import boto3
 S3_BUCKET = os.getenv("S3_BUCKET")
 
 
-def match_akr_airport_authority(msg):
-    sender = msg.get("reply-to", "") or msg.get("from", "")
-    return "akroncantonairport.com" in sender.lower()
+def get_sender(msg: EmailMessage) -> str:
+    return str(msg.get("reply-to", "")) or str(msg.get("from", ""))
 
 
-def match_akr_civil_rights(msg):
+def match_akr_airport_authority(msg: EmailMessage) -> bool:
+    return "akroncantonairport.com" in get_sender(msg).lower()
+
+
+def match_akr_civil_rights(msg: EmailMessage) -> bool:
     # Verify that it's coming from an Akron government sender
-    sender = msg.get("reply-to", "") or msg.get("from", "")
-    if "akronohio.gov" not in sender.lower():
+    if "akronohio.gov" not in get_sender(msg).lower():
         return False
 
     # Check if ACRC is in the body, if so it's for ACRC
     for part in msg.iter_parts():
         if part.get_content_maintype() == "multipart":
-            for sub_part in part.get_payload():
-                if sub_part.get_content_maintype() == "text":
-                    content = sub_part.get_content()
+            payload = part.get_payload()
+            if not isinstance(payload, list):
+                continue
+            for sub_part in payload:
+                if (
+                    sub_part.get_content_maintype() == "text"
+                    and not sub_part.is_multipart()
+                ):
+                    content = str(sub_part.get_payload(decode=True))
                     if "ACRC" in content:
                         return True
 
@@ -37,16 +46,21 @@ def match_akr_civil_rights(msg):
     return False
 
 
+def match_cuya_senior_transportation(msg: EmailMessage) -> bool:
+    return "ridestc.org" in get_sender(msg).lower()
+
+
 MATCHERS = {
     "akr_airport_authority": match_akr_airport_authority,
     "akr_civil_rights": match_akr_civil_rights,
 }
 
 
-def get_match(msg):
+def get_match(msg: EmailMessage) -> str:
     for slug, matcher in MATCHERS.items():
         if matcher(msg):
             return slug
+    return ""
 
 
 def handler(event, context):
@@ -59,9 +73,8 @@ def handler(event, context):
     msg = Parser(policy=default).parsestr(obj["Body"].read().decode("utf-8"))
 
     match_slug = get_match(msg)
-    if not match_slug:
-        sender = msg.get("reply-to", "") or msg.get("from", "")
-        raise ValueError(f"Email {msg['subject']} from {sender} did not match")
+    if match_slug == "":
+        raise ValueError(f"Email {msg['subject']} from {get_sender(msg)} did not match")
 
     s3.copy_object(
         CopySource=obj_source,
