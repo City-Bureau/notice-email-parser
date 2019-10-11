@@ -46,6 +46,38 @@ def match_akr_civil_rights(msg: EmailMessage) -> bool:
     return False
 
 
+def match_akr_civil_service(msg: EmailMessage) -> bool:
+    # Verify that it's coming from an Akron government sender
+    if "akronohio.gov" not in get_sender(msg).lower():
+        return False
+
+    if "civil service" in str(msg.get("subject", "")).lower():
+        return True
+
+    # Check if "civil service" is in the body
+    for part in msg.iter_parts():
+        if part.get_content_maintype() == "multipart":
+            payload = part.get_payload()
+            if not isinstance(payload, list):
+                continue
+            for sub_part in payload:
+                if (
+                    sub_part.get_content_maintype() == "text"
+                    and not sub_part.is_multipart()
+                ):
+                    content = str(sub_part.get_payload(decode=True))
+                    if "civil service" in content.lower():
+                        return True
+
+    # Otherwise check if civil service is in the attachment name
+    for attachment in msg.iter_attachments():
+        attachment_name = attachment.get_filename().lower()
+        if "civil service" in attachment_name:
+            return True
+
+    return False
+
+
 def match_cuya_senior_transportation(msg: EmailMessage) -> bool:
     return "ridestc.org" in get_sender(msg).lower()
 
@@ -53,6 +85,8 @@ def match_cuya_senior_transportation(msg: EmailMessage) -> bool:
 MATCHERS = {
     "akr_airport_authority": match_akr_airport_authority,
     "akr_civil_rights": match_akr_civil_rights,
+    "akr_civil_service": match_akr_civil_service,
+    "cuya_senior_transportation": match_cuya_senior_transportation,
 }
 
 
