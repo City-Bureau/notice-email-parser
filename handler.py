@@ -34,13 +34,13 @@ def match_akr_civil_rights(msg: EmailMessage) -> bool:
                     and not sub_part.is_multipart()
                 ):
                     content = str(sub_part.get_payload(decode=True))
-                    if "ACRC" in content:
+                    if "ACRC" in content or "Civil Rights" in content:
                         return True
 
     # Otherwise check if ACRC is in the attachment name
     for attachment in msg.iter_attachments():
         attachment_name = attachment.get_filename().lower()
-        if "civil rights" in attachment_name or "acrc" in attachment_name:
+        if any(p in attachment_name for p in ["civil rights", "civilrights", "acrc"]):
             return True
 
     return False
