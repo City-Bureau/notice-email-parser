@@ -5,8 +5,17 @@ from email.parser import Parser
 from email.policy import default
 
 import boto3
+import sentry_sdk
+from sentry_sdk.integrations.aws_lambda import AwsLambdaIntegration
 
 S3_BUCKET = os.getenv("S3_BUCKET")
+
+
+sentry_sdk.init(
+    dsn=os.getenv("SENTRY_DSN"),
+    integrations=[AwsLambdaIntegration()],
+    traces_sample_rate=1.0,
+)
 
 
 def get_sender(msg: EmailMessage) -> str:

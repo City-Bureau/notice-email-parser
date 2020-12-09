@@ -2,37 +2,23 @@ service: notice-email-parser
 
 provider:
   name: aws
-  runtime: python3.7
+  runtime: python3.8
   stage: prod
   iamRoleStatements:
     - Effect: Allow
       Action:
         - s3:*
-      Resource: "arn:aws:s3:::${env:S3_BUCKET}/*"
+      Resource: "arn:aws:s3:::${ssm:/${self:provider.stage}/lambda/notice-emails/s3/bucket~true}/*"
   environment:
-    S3_BUCKET: ${env:S3_BUCKET}
-
-custom:
-  alerts:
-    stages:
-      - prod
-    alarms:
-      - functionErrors
-    topics:
-      alarm:
-        topic: ${self:service}-prod-alerts-alarm
-        notifications:
-          - protocol: email
-            endpoint: ${ssm:glueNotificationEmail}
+    S3_BUCKET: ${ssm:/${self:provider.stage}/lambda/notice-emails/s3/bucket~true}
+    SENTRY_DSN: ${ssm:/${self:provider.stage}/lambda/notice-emails/sentry/dsn~true}
 
 functions:
   parse_notice_email:
     handler: handler.handler
-    alarms:
-      - functionErrors
     events:
       - s3:
-          bucket: ${env:S3_BUCKET}
+          bucket: ${ssm:/${self:provider.stage}/lambda/notice-emails/s3/bucket~true}
           event: s3:ObjectCreated:*
           existing: true
           rules:
@@ -43,22 +29,22 @@ resources:
     EmailBucketPermission:
       Type: AWS::S3::BucketPolicy
       Properties:
-        Bucket: ${env:S3_BUCKET}
+        Bucket: ${ssm:/${self:provider.stage}/lambda/notice-emails/s3/bucket~true}
         PolicyDocument:
           Statement:
             - Principal: "*"
-              Action: 
+              Action:
                 - s3:GetObject
               Effect: Allow
               Sid: AllowPublicRead
-              Resource: "arn:aws:s3:::${env:S3_BUCKET}/*"
+              Resource: "arn:aws:s3:::${ssm:/${self:provider.stage}/lambda/notice-emails/s3/bucket~true}/*"
             - Principal:
                 Service: "ses.amazonaws.com"
               Action:
                 - s3:PutObject
               Effect: Allow
               Sid: "AllowSESPuts"
-              Resource: "arn:aws:s3:::${env:S3_BUCKET}/*"
+              Resource: "arn:aws:s3:::${ssm:/${self:provider.stage}/lambda/notice-emails/s3/bucket~true}/*"
               Condition:
                 StringEquals:
                   "aws:Referer": { Ref: AWS::AccountId }
@@ -67,17 +53,13 @@ resources:
       DependsOn:
         - EmailBucketPermission
       Properties:
-        RuleSetName: ${env:RULE_SET_NAME}
+        RuleSetName: ${ssm:/${self:provider.stage}/lambda/notice-emails/ses/ruleSetName~true}
         Rule:
           Name: ${self:service}-s3
           Enabled: true
           Recipients:
-            - ${env:RECIPIENT_EMAIL}
+            - ${ssm:/${self:provider.stage}/lambda/notice-emails/ses/recipient~true}
           Actions:
             - S3Action:
-                BucketName: ${env:S3_BUCKET}
-                ObjectKeyPrefix: ${env:BUCKET_PREFIX}
-
-plugins:
-  - serverless-dotenv-plugin
-  - serverless-plugin-aws-alerts
+                BucketName: ${ssm:/${self:provider.stage}/lambda/notice-emails/s3/bucket~true}
+                ObjectKeyPrefix: inbound/

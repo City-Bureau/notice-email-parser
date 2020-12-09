@@ -7,39 +7,31 @@ on:
 env:
   AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
   AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-  S3_BUCKET: ${{ secrets.S3_BUCKET }}
-  BUCKET_PREFIX: ${{ secrets.BUCKET_PREFIX }}
-  RECIPIENT_EMAIL: ${{ secrets.RECIPIENT_EMAIL }}
-  RULE_SET_NAME: ${{ secrets.RULE_SET_NAME }}
 
 jobs:
-
   deploy:
     name: Deploy
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v1
 
-    - uses: actions/checkout@v1
+      - name: Set up Python 3.8
+        uses: actions/setup-python@v1
+        with:
+          python-version: 3.8
 
-    - name: Set up Python 3.7
-      uses: actions/setup-python@v1
-      with:
-        python-version: 3.7
+      - name: Install mypy
+        run: |
+          python -m pip install --upgrade pip
+          pip install mypy
 
-    - name: Install mypy
-      run: |
-        python -m pip install --upgrade pip
-        pip install mypy
-  
-    - name: Run mypy
-      run: mypy *.py --ignore-missing-imports
+      - name: Run mypy
+        run: mypy *.py --ignore-missing-imports
 
-    - uses: actions/setup-node@v1
-      with:
-        node-version: '10.x'
+      - uses: actions/setup-node@v1
+        with:
+          node-version: "12.x"
 
-    - run: npm install -g serverless
+      - run: npm install
 
-    - run: npm install
-
-    - run: sls deploy
+      - run: npx serverless deploy
