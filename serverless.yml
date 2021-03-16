@@ -12,6 +12,12 @@ provider:
   environment:
     S3_BUCKET: ${ssm:/${self:provider.stage}/lambda/notice-emails/s3/bucket~true}
     SENTRY_DSN: ${ssm:/${self:provider.stage}/lambda/notice-emails/sentry/dsn~true}
+  stackTags:
+    project: city-scrapers
+    environment: ${self:provider.stage}
+  tags:
+    project: city-scrapers
+    environment: ${self:provider.stage}
 
 functions:
   parse_notice_email:
